@@ -152,6 +152,11 @@ def finish_job(job_id: int, output: str, exit_code: int) -> sqlite3.Row | None:
         return conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
 
 
+def get_job(job_id: int) -> sqlite3.Row | None:
+    with db() as conn:
+        return conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+
+
 # --------------------------------------------------------------------------- #
 # telegram
 # --------------------------------------------------------------------------- #
@@ -435,11 +440,31 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"ok": True, "job": None})
 
         elif self.path == "/api/result":
-            job = finish_job(int(body["job_id"]), body.get("output", "")[:20000], int(body.get("exit_code", 0)))
+            jid = int(body["job_id"])
+            pending = get_job(jid)
+            png = body.get("png_b64")
+            output = body.get("output", "")[:20000]
+
+            # A screenshot with no chat behind it belongs to the MCP server, so
+            # land the file and record its path *before* the job turns 'done' —
+            # otherwise a client polling for the result can read the old output.
+            if pending and pending["kind"] == "shot" and png and not pending["chat_id"]:
+                shots = DATA / "shots"
+                shots.mkdir(exist_ok=True)
+                path = shots / f"{jid}.png"
+                try:
+                    path.write_bytes(base64.b64decode(png))
+                    output = str(path)
+                except Exception as e:
+                    print("[hub] could not save screenshot:", e)
+
+            job = finish_job(jid, output, int(body.get("exit_code", 0)))
             if job:
                 chat_id = job["chat_id"]
-                if job["kind"] == "shot" and body.get("png_b64"):
-                    if not tg_send_photo(chat_id, body["png_b64"], f"{job['node']} · job #{job['id']}"):
+                if not chat_id:
+                    pass  # queued over the API, not from a chat — nobody to notify
+                elif job["kind"] == "shot" and png:
+                    if not tg_send_photo(chat_id, png, f"{job['node']} · job #{job['id']}"):
                         tg_send(chat_id, "Screenshot failed to upload.")
                 else:
                     head = f"✅ #{job['id']} `{job['node']}` exit={job['exit_code']}\n\n"
@@ -447,6 +472,35 @@ class Handler(BaseHTTPRequestHandler):
                     tail = "" if len(job["output"] or "") <= MAX_OUT else "\n…truncated, /log for full"
                     tg_send(chat_id, head + "```\n" + out + "\n```" + tail, markdown=True)
             self._json(200, {"ok": True})
+
+        elif self.path == "/api/queue":
+            node = body.get("node") or ""
+            kind = body.get("kind") or "shell"
+            if not node:
+                self._json(400, {"ok": False, "error": "node is required"})
+                return
+            if kind not in ("shell", "agent", "shot"):
+                self._json(400, {"ok": False, "error": f"unknown kind {kind}"})
+                return
+            jid = queue_job(node, kind, body.get("payload", ""), 0)
+            self._json(200, {"ok": True, "job_id": jid})
+
+        elif self.path == "/api/job":
+            row = get_job(int(body.get("job_id", 0)))
+            if not row:
+                self._json(404, {"ok": False, "error": "no such job"})
+                return
+            self._json(200, {"ok": True, "job": dict(row)})
+
+        elif self.path == "/api/cancel":
+            node = body.get("node") or ""
+            with db() as conn:
+                n = conn.execute(
+                    "UPDATE jobs SET status='failed', output='cancelled' "
+                    "WHERE node=? AND status='queued'",
+                    (node,),
+                ).rowcount
+            self._json(200, {"ok": True, "cancelled": n})
 
         else:
             self._json(404, {"ok": False})
