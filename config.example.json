@@ -1,0 +1,9 @@
+{
+  "bot_token": "PUT-YOUR-BOTFATHER-TOKEN-HERE",
+  "owner_id": 0,
+  "node_secret": "change-me-to-a-long-random-string",
+  "hub_host": "0.0.0.0",
+  "hub_port": 8787,
+  "job_timeout": 300,
+  "max_output": 3500
+}

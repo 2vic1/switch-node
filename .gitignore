@@ -1,0 +1,12 @@
+# secrets and runtime state — never commit these
+config.json
+data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+__pycache__/
+*.pyc
+.venv/
+venv/
