@@ -160,7 +160,18 @@ def main() -> None:
         "platform": f"{platform.system()} {platform.release()}",
     }
     print(f"[node] {args.name} → {args.hub}")
-    post(args.hub, "/api/register", info)
+
+    # The hub may not be up yet — a laptop that boots faster than the machine
+    # running the hub, or a Chromebook that reconnects first. Wait for it
+    # instead of dying, otherwise the node needs a manual restart every time.
+    while True:
+        try:
+            post(args.hub, "/api/register", info)
+            print("[node] registered")
+            break
+        except Exception as e:
+            print(f"[node] hub not reachable yet ({e}) — retrying in 5s")
+            time.sleep(5)
 
     idle = 0
     while True:

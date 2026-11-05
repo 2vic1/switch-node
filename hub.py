@@ -507,15 +507,57 @@ class Handler(BaseHTTPRequestHandler):
 
 
 # --------------------------------------------------------------------------- #
+def console_send(chat_id: int, text: str, markdown: bool = False) -> None:
+    """Stand-in for tg_send in --chat mode: print what the bot would say."""
+    print(text, flush=True)
+
+
+def console_send_photo(chat_id: int, png_b64: str, caption: str = "") -> bool:
+    print(f"[photo] {caption or 'screenshot'}", flush=True)
+    return True
+
+
+def chat_loop() -> None:
+    """Drive the command handler from stdin — the chat path without Telegram."""
+    global OWNER
+    OWNER = 1
+    print("chat mode — type /status, /run <node> <cmd>, /shot <node>, /help. Ctrl-C quits.")
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        if line in ("/quit", "/exit"):
+            return
+        handle_text(1, line)
+        print("", flush=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--simulate", help="run one command as the owner, then exit (for testing)")
+    ap.add_argument("--chat", action="store_true", help="drive the commands from stdin instead of Telegram")
     args = ap.parse_args()
 
     init_db()
 
     if args.simulate:
         handle_text(OWNER or 1, args.simulate)
+        return
+
+    if args.chat:
+        # Results come back through the HTTP server thread, so the console
+        # printers have to be installed before the server starts.
+        globals()["tg_send"] = console_send
+        globals()["tg_send_photo"] = console_send_photo
+        host, port = CFG.get("hub_host", "0.0.0.0"), int(CFG.get("hub_port", 8787))
+        srv = ThreadingHTTPServer((host, port), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        print(f"[hub] listening on http://{host}:{port} (chat mode, no Telegram)")
+        try:
+            chat_loop()
+        except KeyboardInterrupt:
+            pass
+        print("[hub] bye")
         return
 
     if not TOKEN:

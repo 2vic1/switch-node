@@ -145,6 +145,25 @@ The first chat to talk to the bot becomes the owner. Everyone else is refused.
 | `/jobs` | last ten jobs |
 | `/stop <node>` | cancel queued jobs |
 
+### Trying it without Telegram
+
+```bash
+python hub.py --chat
+```
+
+Same command handler, same queue, same nodes — only the replies print to the
+console instead of going to Telegram. Useful before the bot token exists, and
+the fastest way to check that a node is actually reachable:
+
+```
+>>> /run windows-pc echo hi
+⏳ job #21 → `windows-pc`
+
+✅ #21 `windows-pc` exit=0
+
+hi
+```
+
 ## Design decisions
 
 **Long-poll, not websockets.** A node polls the hub for up to 25 seconds. This
