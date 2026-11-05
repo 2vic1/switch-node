@@ -111,6 +111,12 @@ The hub prints a node secret. Keep it.
 
 **3. Start a node on each machine**
 
+On Windows you can skip steps 2–3 by double-clicking `start.cmd`: it starts the
+hub and a node for this machine in two windows, and the node reads the secret
+out of `config.json` on its own.
+
+For any other machine:
+
 ```bash
 python node_agent.py --name laptop --hub http://<hub-ip>:8787 --secret <secret>
 ```

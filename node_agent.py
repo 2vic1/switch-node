@@ -138,7 +138,19 @@ def main() -> None:
     args = ap.parse_args()
 
     if not args.secret:
-        print("[node] --secret is required (copy it from the hub startup line)")
+        # On the machine that also runs the hub, the secret is already in
+        # config.json — no reason to make the operator copy it by hand.
+        cfg_path = ROOT / "config.json"
+        if cfg_path.exists():
+            try:
+                args.secret = json.loads(cfg_path.read_text(encoding="utf-8")).get("node_secret", "")
+                if args.secret:
+                    print("[node] using node_secret from config.json")
+            except Exception:
+                pass
+
+    if not args.secret:
+        print("[node] no secret — pass --secret <secret> (the hub prints it at startup)")
         sys.exit(1)
 
     info = {
