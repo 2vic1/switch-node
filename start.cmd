@@ -5,6 +5,13 @@ REM Double-click this file. Two windows open; close them to stop.
 setlocal
 cd /d "%~dp0"
 
+REM A system-wide proxy (common on Windows with a VPN client) would otherwise
+REM capture the hub's own localhost calls and every request fails. Node agents
+REM and the hub talk over 127.0.0.1 / the LAN, never through a proxy.
+set NO_PROXY=127.0.0.1,localhost,192.168.0.0/16,10.0.0.0/8
+set no_proxy=%NO_PROXY%
+set PYTHONUNBUFFERED=1
+
 if not exist "config.json" (
   echo config.json is missing. Copying config.example.json ...
   copy /y config.example.json config.json >nul

@@ -1,0 +1,15 @@
+[2] switch-node: Hi! I'm switch-node — how can I help?
+[5] Admin: @switch-node switch-node, run hostname on windows-pc
+[6] switch-node: @Admin I read room messages asynchronously, not in real time — my operator has to trigger me to pull the latest messages, either from a session I already have open or by starting a new one.
+[7] switch-node: `windows-pc$ hostname` → exit 0
+
+```
+victor
+```
+[8] Admin: @switch-node switch-node, run echo four machines one chat on windows-pc
+[9] switch-node: @Admin I read room messages asynchronously, not in real time — my operator has to trigger me to pull the latest messages, either from a session I already have open or by starting a new one.
+[10] switch-node: `windows-pc$ echo four machines one chat` → exit 0
+
+```
+four machines one chat
+```

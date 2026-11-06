@@ -57,6 +57,54 @@ itself. Ask in the chat *"what's the Chromebook doing?"* and the agent calls
 Because it is plain MCP, the same file works in Claude Code, Cursor, Codex and
 OpenCode without Switch in the picture at all.
 
+### Running inside a real Switch room
+
+`switch_agent.py` is a complete agent for a Switch room, in one stdlib file. It
+speaks Switch's MCP transport, sits in a room, and turns what people ask for
+into work on a named machine.
+
+It is not a mock. This transcript is copied from a Switch core 0.31.0 running
+locally, in a room with one human and one agent:
+
+```
+[5] Admin:      @switch-node switch-node, run hostname on windows-pc
+[7] switch-node: `windows-pc$ hostname` → exit 0
+
+                 victor
+```
+
+```
+[8] Admin:      @switch-node switch-node, run echo four machines one chat on windows-pc
+[10] switch-node: `windows-pc$ echo four machines one chat` → exit 0
+
+                 four machines one chat
+```
+
+What happens between those two lines:
+
+1. Switch delivers the mention to the agent over MCP (`read_context`).
+2. `switch_agent.py` pulls the node and command out of the sentence.
+3. It posts a job to the hub, which the node on `windows-pc` picks up.
+4. The node runs it and reports stdout and the exit code back to the hub.
+5. The agent posts the result into the room with `post_message`.
+
+Run it against your own Switch:
+
+```bash
+export SWITCH_URL=http://127.0.0.1:8000
+export SWITCH_AGENT_KEY=<the api_key Switch gave this agent>
+export SWITCH_ROOM=<room id>
+export HUB_URL=http://127.0.0.1:8787
+export HUB_SECRET=<the secret the hub printed>
+
+python switch_agent.py
+```
+
+Two things worth knowing, both of which the transcript shows. The agent polls —
+Switch does not push into a passive session, so its own line about reading
+messages asynchronously appears under each ask. And the machine is named in the
+sentence: `run <command> on <node>`, or `run <node>: <command>`.
+
 ### Registering the MCP server
 
 Add it to your agent's MCP config, pointing at the interpreter and the file:
@@ -192,6 +240,10 @@ Verified end to end on a Windows 11 hub + node: `run_command` returned
 `exit 0`, `screenshot_node` wrote a 297 KB PNG and returned its path, and an
 unknown node name came back as a clean error instead of a hang.
 
+Verified again inside a real Switch room — Switch core 0.31.0, one human, one
+agent, a command asked for in the room and its output posted back into it. The
+transcript above is that run, not a sketch of one.
+
 Next: Tailscale discovery so nodes find the hub without a hard-coded address;
 per-node working directories; streaming output instead of one reply at the end.
 
@@ -201,6 +253,7 @@ per-node working directories; streaming output instead of one reply at the end.
 hub.py                 bot + queue + HTTP api     (stdlib only)
 node_agent.py          node daemon                (stdlib only)
 mcp_server.py          MCP stdio server           (stdlib only)
+switch_agent.py        agent for a Switch room    (stdlib only)
 config.example.json    template — copy to config.json
 config.json            your token and secret      (gitignored)
 data/hub.db            jobs and nodes             (created on first run)

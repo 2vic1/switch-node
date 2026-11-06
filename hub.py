@@ -412,8 +412,31 @@ class Handler(BaseHTTPRequestHandler):
             with db() as conn:
                 rows = [dict(r) for r in conn.execute("SELECT * FROM nodes").fetchall()]
             self._json(200, {"ok": True, "nodes": rows})
+        elif self.path.startswith("/static/"):
+            self._static(self.path[len("/static/"):])
         else:
             self._json(404, {"ok": False})
+
+    # Provisioning a new node used to mean copying files over by hand. Serving
+    # the agent from the hub turns it into one curl on the target machine.
+    def _static(self, name: str) -> None:
+        name = name.split("?")[0]
+        if not name or "/" in name or "\\" in name or name.startswith("."):
+            self._json(404, {"ok": False})
+            return
+        if not name.endswith((".py", ".sh", ".json")):
+            self._json(404, {"ok": False})
+            return
+        path = ROOT / name
+        if not path.is_file():
+            self._json(404, {"ok": False})
+            return
+        body = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self) -> None:
         body = self._body()
