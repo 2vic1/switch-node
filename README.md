@@ -9,6 +9,9 @@ reply. Screenshot any node with one command.
 No cloud account. No port forwarding. No bot framework. Two Python files and the
 standard library.
 
+**Demo (52s):** https://youtu.be/uLaSerJNoms — the first half is a real Switch
+room, the second is the same hub driven from Telegram.
+
 ---
 
 ## The problem
